@@ -45,7 +45,10 @@ export function Review({
       {completed && submission ? (
         <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
           <p className="font-semibold text-emerald-800">{submission.message}</p>
-          <p className="mt-1 text-sm text-emerald-700">Your information was received and is ready for the next phase.</p>
+          <p className="mt-1 text-sm text-emerald-700">
+            Resume processed ({submission.resume.text_length.toLocaleString()} characters) and job
+            description processed ({submission.job_description.text_length.toLocaleString()} characters).
+          </p>
         </div>
       ) : (
         <div className="mt-8 border-t border-slate-100 pt-6">

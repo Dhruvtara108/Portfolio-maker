@@ -10,10 +10,14 @@ export interface PortfolioDraftResponse {
   resume: {
     filename: string
     size: number
+    extracted: boolean
+    text_length: number
   }
   job_description: {
     source: 'text' | 'file'
-    filename?: string
+    filename: string | null
+    extracted: boolean
+    text_length: number
   }
 }
 

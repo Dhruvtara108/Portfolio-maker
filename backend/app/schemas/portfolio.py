@@ -13,9 +13,23 @@ class CandidateInfo(BaseModel):
     website_url: AnyHttpUrl | None = None
 
 
+class DocumentMetadata(BaseModel):
+    filename: str
+    size: int
+    extracted: bool
+    text_length: int
+
+
+class JobDescriptionMetadata(BaseModel):
+    source: str
+    filename: str | None = None
+    extracted: bool
+    text_length: int
+
+
 class PortfolioDraftResponse(BaseModel):
     success: bool
     message: str
     candidate: dict[str, str]
-    resume: dict[str, str | int]
-    job_description: dict[str, str]
+    resume: DocumentMetadata
+    job_description: JobDescriptionMetadata

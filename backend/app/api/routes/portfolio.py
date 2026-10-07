@@ -4,6 +4,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
 
 from app.schemas.portfolio import CandidateInfo, PortfolioDraftResponse
+from app.services.extraction import ExtractionError, extract_file_text, normalize_text
 from app.services.portfolio import create_portfolio_draft
 
 router = APIRouter(prefix="/portfolio", tags=["portfolio"])
@@ -46,7 +47,16 @@ async def create_draft(
             detail=exc.errors(),
         ) from exc
 
-    resume_size = await validate_upload(resume, RESUME_EXTENSIONS, "resume")
+    resume_content = await validate_upload(resume, RESUME_EXTENSIONS, "resume")
+    try:
+        resume_document = extract_file_text(
+            resume_content,
+            resume.filename or "resume",
+            resume.content_type or "application/octet-stream",
+        )
+    except ExtractionError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
     job_description_value = job_description_text.strip()
     if bool(job_description_value) == bool(job_description_file):
         raise HTTPException(
@@ -56,14 +66,39 @@ async def create_draft(
 
     job_description_filename = None
     if job_description_file:
-        await validate_upload(job_description_file, JOB_DESCRIPTION_EXTENSIONS, "job description")
+        job_description_content = await validate_upload(
+            job_description_file,
+            JOB_DESCRIPTION_EXTENSIONS,
+            "job description",
+        )
         job_description_filename = job_description_file.filename
+        try:
+            job_description_document = extract_file_text(
+                job_description_content,
+                job_description_filename or "job-description",
+                job_description_file.content_type or "application/octet-stream",
+            )
+        except ExtractionError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    else:
+        try:
+            normalized_job_description = normalize_text(job_description_value)
+            if not normalized_job_description:
+                raise ExtractionError("The pasted job description is empty.")
+        except ExtractionError as exc:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
     return create_portfolio_draft(
         candidate=candidate,
         resume_filename=resume.filename or "resume",
-        resume_size=resume_size,
+        resume_size=len(resume_content),
+        resume_text_length=resume_document.character_count,
         job_description_source="file" if job_description_file else "text",
+        job_description_text_length=(
+            job_description_document.character_count
+            if job_description_file
+            else len(normalized_job_description)
+        ),
         job_description_filename=job_description_filename,
     )
 
@@ -72,7 +107,7 @@ async def validate_upload(
     upload: UploadFile,
     allowed_extensions: set[str],
     label: str,
-) -> int:
+) -> bytes:
     filename = upload.filename or ""
     extension = PurePath(filename).suffix.lower()
     if extension not in allowed_extensions:
@@ -100,4 +135,4 @@ async def validate_upload(
             detail=f"The {label} does not contain a valid DOCX file.",
         )
 
-    return len(content)
+    return content
