@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { submitPortfolioDraft } from './api/portfolio'
 import { ProgressIndicator } from './components/ProgressIndicator'
 import { StepLayout } from './components/StepLayout'
 import { CandidateInformation } from './pages/CandidateInformation'
@@ -32,6 +33,9 @@ function App() {
   const [step, setStep] = useState(0)
   const [draft, setDraft] = useState<PortfolioDraft>(initialDraft)
   const [completed, setCompleted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submission, setSubmission] = useState<Awaited<ReturnType<typeof submitPortfolioDraft>> | null>(null)
 
   const updateDraft = (updates: Partial<PortfolioDraft>) => {
     setDraft((current) => ({ ...current, ...updates }))
@@ -90,7 +94,22 @@ function App() {
             <Review
               draft={draft}
               completed={completed}
-              onBuild={() => setCompleted(true)}
+              isSubmitting={isSubmitting}
+              error={submitError}
+              submission={submission}
+              onBuild={async () => {
+                setIsSubmitting(true)
+                setSubmitError('')
+                try {
+                  const result = await submitPortfolioDraft(draft)
+                  setSubmission(result)
+                  setCompleted(true)
+                } catch (error) {
+                  setSubmitError(error instanceof Error ? error.message : 'Unable to submit your portfolio draft.')
+                } finally {
+                  setIsSubmitting(false)
+                }
+              }}
             />
           )}
         </StepLayout>

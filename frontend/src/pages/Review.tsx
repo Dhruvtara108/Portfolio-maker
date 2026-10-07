@@ -1,12 +1,23 @@
 import type { PortfolioDraft } from '../types/portfolio'
+import type { PortfolioDraftResponse } from '../api/portfolio'
 
 interface ReviewProps {
   draft: PortfolioDraft
   completed: boolean
+  isSubmitting: boolean
+  error: string
+  submission: PortfolioDraftResponse | null
   onBuild: () => void
 }
 
-export function Review({ draft, completed, onBuild }: ReviewProps) {
+export function Review({
+  draft,
+  completed,
+  isSubmitting,
+  error,
+  submission,
+  onBuild,
+}: ReviewProps) {
   const { candidate, resume, jobDescription } = draft
   return (
     <div>
@@ -31,16 +42,19 @@ export function Review({ draft, completed, onBuild }: ReviewProps) {
           {jobDescription.file && <p className="mt-1 text-sm text-slate-500">{jobDescription.file.name}</p>}
         </ReviewRow>
       </div>
-      {completed ? (
+      {completed && submission ? (
         <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-center">
-          <p className="font-semibold text-emerald-800">Your portfolio generation pipeline will start here.</p>
-          <p className="mt-1 text-sm text-emerald-700">This is a placeholder for the next phase.</p>
+          <p className="font-semibold text-emerald-800">{submission.message}</p>
+          <p className="mt-1 text-sm text-emerald-700">Your information was received and is ready for the next phase.</p>
         </div>
       ) : (
-        <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
-          <button className="primary-button" onClick={onBuild} type="button">
-            Build My Portfolio <span aria-hidden="true">→</span>
-          </button>
+        <div className="mt-8 border-t border-slate-100 pt-6">
+          {error && <p className="mb-4 text-sm font-medium text-red-600">{error}</p>}
+          <div className="flex justify-end">
+            <button className="primary-button disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting} onClick={onBuild} type="button">
+              {isSubmitting ? 'Sending draft...' : 'Build My Portfolio'} {!isSubmitting && <span aria-hidden="true">→</span>}
+            </button>
+          </div>
         </div>
       )}
     </div>
